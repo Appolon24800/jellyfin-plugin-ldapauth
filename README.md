@@ -44,6 +44,8 @@ The feature is disabled by default. When disabled, the existing library settings
 
 ## Build
 
+This build targets Jellyfin 12.1.0. The Jellyfin dependency is pinned so builds do not pick up incompatible preview versions.
+
 1. To build this plugin you will need [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 2. Build plugin with following command
