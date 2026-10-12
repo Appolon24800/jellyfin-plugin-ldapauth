@@ -28,16 +28,32 @@ Allows the administrator to customize most aspects of the LDAP authentication pr
 
 [See the official documentation for install instructions](https://jellyfin.org/docs/general/server/plugins/index.html#installing).
 
+## Folder role mapping
+
+In the plugin settings, open **Jellyfin User Settings** and enable **Folder role mapping** to manage library access from LDAP groups or roles.
+
+1. Set the LDAP role attribute. The default is `memberOf`. The bind user must be able to read this attribute on user entries.
+2. Add a role mapping and enter a complete attribute value, such as `CN=JellyfinMovies,OU=Groups,DC=example,DC=com`.
+3. Select the libraries granted by that role, then save the settings and restart Jellyfin.
+
+Users receive the union of the libraries for all matching roles. Matching ignores case and leading or trailing whitespace. It does not interpret wildcards, shorten group DNs, or resolve nested groups. Directories that store membership only on group entries, such as `memberUid`, need a user-side membership attribute to use this feature.
+
+When enabled, mappings replace the default library settings and synchronize access on every successful LDAP login for new and existing users. A missing role attribute or no matching role grants no libraries. Removing a role revokes its library access on the next login. Existing sessions are not explicitly revoked. Jellyfin administrators retain Jellyfin's administrator access rules.
+
+The feature is disabled by default. When disabled, the existing library settings apply only to newly created users, and the plugin leaves existing users' library access unchanged.
+
 ## Build
 
-1. To build this plugin you will need [.Net 9.x SDK](https://dotnet.microsoft.com/download/dotnet/9.0).
+1. To build this plugin you will need [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 2. Build plugin with following command
   ```
-  dotnet publish --configuration Release --output bin
+   dotnet publish LDAP-Auth/LDAP-Auth.csproj --configuration Release --output bin
   ```
 
 3. Place the dll-file in the `plugins/ldapauth` folder (you might need to create the folders) of your JF install
+
+Run the mapping and configuration tests with `dotnet test LDAP-Auth.sln --configuration Release`.
 
 ## Releasing
 

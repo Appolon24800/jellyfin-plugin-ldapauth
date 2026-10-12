@@ -43,6 +43,9 @@ namespace Jellyfin.Plugin.LDAP_Auth.Config
             LdapProfileImageFormat = ProfileImageFormat.Default;
             EnableAllFolders = false;
             EnabledFolders = Array.Empty<string>();
+            EnableFolderRoles = false;
+            LdapRoleAttribute = "memberOf";
+            FolderRoleMapping = Array.Empty<FolderRoleMap>();
 
             LdapUsers = Array.Empty<LdapUser>();
         }
@@ -186,6 +189,21 @@ namespace Jellyfin.Plugin.LDAP_Auth.Config
         /// Gets or sets a list of folder Ids which are enabled for access by default.
         /// </summary>
         public string[] EnabledFolders { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether library access is synchronized from LDAP roles on every login.
+        /// </summary>
+        public bool EnableFolderRoles { get; set; }
+
+        /// <summary>
+        /// Gets or sets the LDAP attribute containing role values, such as memberOf group DNs.
+        /// </summary>
+        public string LdapRoleAttribute { get; set; }
+
+        /// <summary>
+        /// Gets or sets the role mappings that replace default library access when enabled.
+        /// </summary>
+        public FolderRoleMap[] FolderRoleMapping { get; set; }
 
         /// <summary>
         /// Gets or sets the password reset url.

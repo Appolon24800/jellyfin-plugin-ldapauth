@@ -5,12 +5,18 @@ VisualStudioVersion = 15.0.28307.168
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LDAP-Auth", "LDAP-Auth/LDAP-Auth.csproj", "{5984E9A5-63C7-4FC6-9C96-F82EF9841A95}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LDAP-Auth.Tests", "LDAP-Auth.Tests/LDAP-Auth.Tests.csproj", "{77D0E6D5-A704-4AA9-940C-9718F5CDD278}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{77D0E6D5-A704-4AA9-940C-9718F5CDD278}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77D0E6D5-A704-4AA9-940C-9718F5CDD278}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77D0E6D5-A704-4AA9-940C-9718F5CDD278}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77D0E6D5-A704-4AA9-940C-9718F5CDD278}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5984E9A5-63C7-4FC6-9C96-F82EF9841A95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5984E9A5-63C7-4FC6-9C96-F82EF9841A95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5984E9A5-63C7-4FC6-9C96-F82EF9841A95}.Release|Any CPU.ActiveCfg = Release|Any CPU

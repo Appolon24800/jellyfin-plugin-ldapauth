@@ -195,6 +195,13 @@ namespace Jellyfin.Plugin.LDAP_Auth
                 }
             }
 
+            var configuration = LdapPlugin.Instance.Configuration;
+            var enabledFolders = configuration.EnableFolderRoles
+                ? FolderRoleMapper.GetEnabledFolders(GetAttribute(ldapUser, configuration.LdapRoleAttribute.Trim())?.StringValueArray, configuration.FolderRoleMapping)
+                : configuration.EnabledFolders;
+            var enableAllFolders = !configuration.EnableFolderRoles && configuration.EnableAllFolders;
+            var isNewUser = user == null;
+
             if (user == null)
             {
                 _logger.LogDebug("Creating new user {Username} - is admin? {IsAdmin}", ldapUsername, ldapIsAdmin);
@@ -205,11 +212,8 @@ namespace Jellyfin.Plugin.LDAP_Auth
                     user.AuthenticationProviderId = providerName;
                     user.PasswordResetProviderId = providerName;
                     user.SetPermission(PermissionKind.IsAdministrator, ldapIsAdmin);
-                    user.SetPermission(PermissionKind.EnableAllFolders, LdapPlugin.Instance.Configuration.EnableAllFolders);
-                    if (!LdapPlugin.Instance.Configuration.EnableAllFolders)
-                    {
-                        user.SetPreference(PreferenceKind.EnabledFolders, LdapPlugin.Instance.Configuration.EnabledFolders);
-                    }
+                    user.SetPermission(PermissionKind.EnableAllFolders, enableAllFolders);
+                    user.SetPreference(PreferenceKind.EnabledFolders, enableAllFolders ? Array.Empty<string>() : enabledFolders);
 
                     var providerManager = _applicationHost.Resolve<IProviderManager>();
                     var serverConfigurationManager = _applicationHost.Resolve<IServerConfigurationManager>();
@@ -275,10 +279,22 @@ namespace Jellyfin.Plugin.LDAP_Auth
                     }
                 }
 
+                if (configuration.EnableFolderRoles)
+                {
+                    user.SetPermission(PermissionKind.EnableAllFolders, false);
+                    user.SetPreference(PreferenceKind.EnabledFolders, enabledFolders);
+                    userNeedsUpdate = true;
+                }
+
                 if (userNeedsUpdate)
                 {
                     await userManager.UpdateUserAsync(user).ConfigureAwait(false);
                 }
+            }
+
+            if (isNewUser || configuration.EnableFolderRoles)
+            {
+                await userManager.UpdatePolicyAsync(user.Id, userManager.GetUserDto(user).Policy).ConfigureAwait(false);
             }
 
             return new ProviderAuthenticationResult { Username = ldapUsername };
@@ -506,6 +522,17 @@ namespace Jellyfin.Plugin.LDAP_Auth
             ILdapSearchResults ldapUsers;
 
             string[] attrs = [UsernameAttr, UidAttr];
+            var configuration = LdapPlugin.Instance.Configuration;
+            if (configuration.EnableFolderRoles)
+            {
+                if (string.IsNullOrWhiteSpace(configuration.LdapRoleAttribute))
+                {
+                    throw new AuthenticationException("LDAP role attribute must be configured when folder role mapping is enabled.");
+                }
+
+                attrs = [..attrs, configuration.LdapRoleAttribute.Trim()];
+            }
+
             if (EnableProfileImageSync)
             {
                 attrs = [..attrs, ProfileImageAttr];

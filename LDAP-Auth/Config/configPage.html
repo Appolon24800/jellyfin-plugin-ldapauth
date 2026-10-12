@@ -208,6 +208,7 @@
                                 </div>
                                 <div class="folderAccessContainer">
                                     <h2>${HeaderLibraryAccess}</h2>
+                                    <div class="fieldDescription">Default access for newly created users. Folder role mapping overrides these defaults when enabled.</div>
                                     <label class="checkboxContainer">
                                         <input type="checkbox" is="emby-checkbox" id="chkEnableAllFolders" />
                                         <span>${OptionEnableAccessToAllLibraries}</span>
@@ -218,6 +219,18 @@
                                         <div class="fieldDescription">${LibraryAccessHelp}</div>
                                     </div>
                                 </div>
+                                <h2>Folder role mapping</h2>
+                                <label class="checkboxContainer">
+                                    <input type="checkbox" is="emby-checkbox" id="chkEnableFolderRoles" />
+                                    <span>Enable folder role mapping</span>
+                                </label>
+                                <div class="fieldDescription">Replace library access on every successful LDAP login, including for existing users. Users receive the combined libraries of all matching roles. Users with no matching roles receive no library access. Manual library changes are overwritten on the next login.</div>
+                                <div class="inputContainer">
+                                    <input is="emby-input" type="text" id="txtLdapRoleAttribute" label="LDAP role attribute:" placeholder="memberOf" />
+                                    <div class="fieldDescription">A multi-valued attribute on the user entry. For memberOf, enter each complete group DN as the role. Values are matched case-insensitively, without wildcard matching or nested group lookup.</div>
+                                </div>
+                                <div id="folderRoleMappings"></div>
+                                <button is="emby-button" type="button" id="btnAddFolderRole" class="raised button">Add role mapping</button>
                             </div>
                         </div>
                         <div>
@@ -269,8 +282,48 @@
                 selLdapProfileImageFormat: document.querySelector("#selLdapProfileImageFormat"),
                 chkEnableAllFolders: document.querySelector('#chkEnableAllFolders'),
                 folderAccessList: document.querySelector('.folderAccess'),
+                chkEnableFolderRoles: document.querySelector('#chkEnableFolderRoles'),
+                txtLdapRoleAttribute: document.querySelector('#txtLdapRoleAttribute'),
+                folderRoleMappings: document.querySelector('#folderRoleMappings'),
+                mediaFolders: [],
                 txtPasswordResetUrl: document.querySelector("#txtLdapPasswordResetUrl")
             };
+
+            function addFolderRoleMapping(mapping) {
+                const row = document.createElement('div');
+                row.className = 'folderRoleMapping verticalSection';
+                row.innerHTML = '<div class="inputContainer"><input is="emby-input" type="text" class="folderRole" label="LDAP role:" required /></div><div class="checkboxList paperList checkboxList-paperList roleFolders"></div><button is="emby-button" type="button" class="raised button removeFolderRole">Remove mapping</button>';
+                row.querySelector('.folderRole').value = mapping.Role || '';
+                const selected = mapping.Folders || [];
+                const folders = LdapConfigurationPage.mediaFolders.slice();
+                selected.forEach(id => {
+                    if (!folders.some(folder => folder.Id === id)) {
+                        folders.push({ Id: id, Name: 'Unavailable library: ' + id });
+                    }
+                });
+                folders.forEach(folder => {
+                    const label = document.createElement('label');
+                    const checkbox = document.createElement('input', { is: 'emby-checkbox' });
+                    checkbox.setAttribute('is', 'emby-checkbox');
+                    checkbox.type = 'checkbox';
+                    checkbox.dataset.id = folder.Id;
+                    checkbox.checked = selected.indexOf(folder.Id) !== -1;
+                    const name = document.createElement('span');
+                    name.textContent = folder.Name;
+                    label.appendChild(checkbox);
+                    label.appendChild(name);
+                    row.querySelector('.roleFolders').appendChild(label);
+                });
+                row.querySelector('.removeFolderRole').addEventListener('click', () => row.remove());
+                LdapConfigurationPage.folderRoleMappings.appendChild(row);
+            }
+
+            document.querySelector('#btnAddFolderRole').addEventListener('click', () => {
+                addFolderRoleMapping({ Role: '', Folders: [] });
+            });
+            LdapConfigurationPage.chkEnableFolderRoles.addEventListener('change', () => {
+                LdapConfigurationPage.txtLdapRoleAttribute.required = LdapConfigurationPage.chkEnableFolderRoles.checked;
+            });
 
             document.querySelector('.esqConfigurationPage').addEventListener("pageshow", function () {
                 // start with all groups expanded
@@ -307,6 +360,9 @@
                     LdapConfigurationPage.selLdapProfileImageFormat.value = config.LdapProfileImageFormat;
                     config.EnableAllFolders = config.EnableAllFolders || false;
                     LdapConfigurationPage.chkEnableAllFolders.checked = config.EnableAllFolders;
+                    LdapConfigurationPage.chkEnableFolderRoles.checked = config.EnableFolderRoles || false;
+                    LdapConfigurationPage.txtLdapRoleAttribute.value = config.LdapRoleAttribute || 'memberOf';
+                    LdapConfigurationPage.txtLdapRoleAttribute.required = LdapConfigurationPage.chkEnableFolderRoles.checked;
                     /* Default to empty array if Enabled Folders is not set */
                     config.EnabledFolders = config.EnabledFolders || [];
                     LdapConfigurationPage.txtPasswordResetUrl.value = config.PasswordResetUrl || '';
@@ -328,6 +384,9 @@
                   return window.ApiClient.getJSON(window.ApiClient.getUrl('Library/MediaFolders', {
                     IsHidden: false
                   })).then((mediaFolders) => {
+                    LdapConfigurationPage.mediaFolders = mediaFolders.Items || [];
+                    LdapConfigurationPage.folderRoleMappings.replaceChildren();
+                    (config.FolderRoleMapping || []).forEach(addFolderRoleMapping);
                     let html = '';
                     html += '<h3 class="checkboxListLabel">${HeaderLibraries}</h3>';
                     html += '<div id="folderList" class="checkboxList paperList checkboxList-paperList">';
@@ -402,6 +461,12 @@
                     folders = Array.prototype.filter.call(folders, folder => folder.checked)
                       .map(folder => folder.getAttribute("data-id"));
                     config.EnabledFolders = folders;
+                    config.EnableFolderRoles = LdapConfigurationPage.chkEnableFolderRoles.checked;
+                    config.LdapRoleAttribute = LdapConfigurationPage.txtLdapRoleAttribute.value.trim();
+                    config.FolderRoleMapping = Array.from(LdapConfigurationPage.folderRoleMappings.querySelectorAll('.folderRoleMapping')).map(row => ({
+                        Role: row.querySelector('.folderRole').value.trim(),
+                        Folders: Array.from(row.querySelectorAll('.roleFolders input')).filter(folder => folder.checked).map(folder => folder.dataset.id)
+                    }));
                     config.PasswordResetUrl = LdapConfigurationPage.txtPasswordResetUrl.value;
                     window.ApiClient.updatePluginConfiguration(LdapConfigurationPage.pluginUniqueId, config).then(Dashboard.processPluginConfigurationUpdateResult);
                 });
